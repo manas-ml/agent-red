@@ -16,33 +16,63 @@ which ones they only appear to.
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    A["promptfoo<br/>plugins + strategies<br/>generate attack probes"]
-    B["Custom provider<br/>agent_provider.py<br/>one session per test case"]
-    C["Target agent<br/>FastAPI /chat"]
-    D["Tools<br/>lookup_order · issue_refund<br/>read_internal_note · ..."]
-    E["Response +<br/>tool calls taken"]
-    F["Graders<br/>LLM graders +<br/>deterministic assertions"]
-    G["output/results.json<br/>scorecard"]
-    H["logs/tool_calls.jsonl<br/>audit trail"]
-
-    A -->|"attack probe"| B
-    B -->|"HTTP POST"| C
-    C --> D
-    D -->|"NW-1043's delivery notes<br/>inject a fake directive"| C
-    C --> E
-    D --> H
-    E --> B
-    B -->|"output + tool_calls"| F
-    F --> G
-    H -.->|"trace any finding<br/>to its tool calls"| G
+```
++--------------------------------+
+| promptfoo                      |
+| plugins + strategies generate  |
+| attack probes                  |
++--------------------------------+
+                 |
+                 | attack probe
+                 v
++--------------------------------+
+| Custom provider                |
+| agent_provider.py - a fresh    |
+| session_id per test case       |
++--------------------------------+
+                 |
+                 | HTTP POST /chat
+                 v
++--------------------------------+
+| Target agent  (FastAPI)        |
+| agent loop + tool dispatch     |
++--------------------------------+
+                 |
+                 v
++--------------------------------+
+| Tools                          |
+| lookup_order, issue_refund,    |
+| read_internal_note, ...        |
+| -> every call logged to        |
+|    logs/tool_calls.jsonl       |
++--------------------------------+
+                 |
+                 | reply + tool_calls taken
+                 v
++--------------------------------+
+| Graders                        |
+| LLM graders +                  |
+| deterministic assertions       |
++--------------------------------+
+                 |
+                 v
++--------------------------------+
+| output/results.json            |
+| scorecard, ASR per plugin      |
++--------------------------------+
 ```
 
-The arrow that matters most is the one from `TOOLS` back into `LOOP`: order
+The step that matters most is inside `Tools`, not between the boxes: order
 `NW-1043` carries a prompt injection inside its *customer-supplied delivery
 instructions*. The attacker never types it. It arrives as tool output during
-an ordinary order lookup, and the unhardened agent obeys it.
+an ordinary order lookup, feeds straight back into the agent's own context,
+and the unhardened agent obeys it — the diagram's tidy top-to-bottom flow
+hides that the "Tools" step is really a round trip back through the agent
+loop before a reply comes out the bottom.
+
+Every tool call — the injected refund included — is written to
+`logs/tool_calls.jsonl` as it happens, which is what lets a failed test case
+in the final report be traced back to the exact call that caused it.
 
 ---
 
