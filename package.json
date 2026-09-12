@@ -1,0 +1,13 @@
+{
+  "name": "northwind-redteam-poc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Promptfoo red-teaming POC against a deliberately under-hardened support agent",
+  "scripts": {
+    "scan": "promptfoo redteam run --config redteam/promptfooconfig.yaml",
+    "report": "promptfoo redteam report"
+  },
+  "devDependencies": {
+    "promptfoo": "0.123.0"
+  }
+}

@@ -1,0 +1,6 @@
+# promptfoo writes the generated adversarial test cases here. They are derived
+# artifacts (and can run to thousands of lines of attack probes) — regenerate
+# them with `make scan` rather than committing them.
+redteam.yaml
+output/
+.promptfoo/

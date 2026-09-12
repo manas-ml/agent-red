@@ -1,0 +1,20 @@
+# Scan artifacts
+output/
+logs/
+redteam.yaml
+redteam/redteam.yaml
+.promptfoo/
+
+# Secrets — the repo ships .env.example, never .env
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log*
