@@ -17,47 +17,26 @@ which ones they only appear to.
 ## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph PF["promptfoo harness"]
-        GEN["Plugin generators<br/>(16 plugins)<br/>pii · bola · rbac<br/>policy · injection"]
-        STRAT["Strategies<br/>jailbreak · crescendo<br/>goat · base64<br/>multilingual"]
-        GEN --> STRAT
-    end
+flowchart TD
+    A["promptfoo<br/>plugins + strategies<br/>generate attack probes"]
+    B["Custom provider<br/>agent_provider.py<br/>one session per test case"]
+    C["Target agent<br/>FastAPI /chat"]
+    D["Tools<br/>lookup_order · issue_refund<br/>read_internal_note · ..."]
+    E["Response +<br/>tool calls taken"]
+    F["Graders<br/>LLM graders +<br/>deterministic assertions"]
+    G["output/results.json<br/>scorecard"]
+    H["logs/tool_calls.jsonl<br/>audit trail"]
 
-    subgraph PROV["Custom provider<br/>agent_provider.py"]
-        SESS["fresh session_id<br/>per test case"]
-        MT["multi-turn replay<br/>for crescendo / goat"]
-    end
-
-    STRAT -->|"attack probes"| PROV
-    PROV -->|"POST /chat<br/>HTTP 127.0.0.1:8000"| APP
-
-    subgraph TGT["Target agent (system under test)"]
-        APP["FastAPI<br/>/chat · /reset · /audit"]
-        LOOP["Agent loop<br/>LLM + tool dispatch"]
-        TOOLS["Tools<br/>lookup_order · search_customer<br/>issue_refund · read_internal_note<br/>escalate_to_human"]
-        HARD{"AGENT_HARDENED?"}
-        APP --> LOOP --> HARD
-        HARD -->|"false: no checks"| TOOLS
-        HARD -->|"true: authz + scrub"| TOOLS
-    end
-
-    TOOLS -->|"NW-1043 delivery_instructions<br/>carry an injected directive"| LOOP
-    TOOLS --> AUDIT["logs/tool_calls.jsonl<br/>audit trail"]
-
-    subgraph GRADE["Grading"]
-        LLM["promptfoo plugin graders<br/>(pinned model)"]
-        DET["Deterministic assertions<br/>refund cap · order ownership<br/>canary strings"]
-    end
-
-    APP -->|"reply + tool_calls"| PROV
-    PROV -->|"output + metadata.tool_calls"| GRADE
-    GRADE --> REPORT["output/results.json<br/>scorecard · ASR per plugin"]
-    AUDIT -.->|"trace a finding<br/>to its tool calls"| REPORT
-
-    style TGT fill:#2d1b1b,stroke:#a44
-    style PF fill:#1b2d1b,stroke:#4a4
-    style DET fill:#2d2a1b,stroke:#aa4
+    A -->|"attack probe"| B
+    B -->|"HTTP POST"| C
+    C --> D
+    D -->|"NW-1043's delivery notes<br/>inject a fake directive"| C
+    C --> E
+    D --> H
+    E --> B
+    B -->|"output + tool_calls"| F
+    F --> G
+    H -.->|"trace any finding<br/>to its tool calls"| G
 ```
 
 The arrow that matters most is the one from `TOOLS` back into `LOOP`: order
